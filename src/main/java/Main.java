@@ -1,4 +1,6 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -16,8 +18,21 @@ public class Main {
     //   // ensures that we don't run into 'Address already in use' errors
        serverSocket.setReuseAddress(true);
     //
-       serverSocket.accept(); // Wait for connection from client.
+       Socket clientSocket = serverSocket.accept(); // Wait for connection from client.
        System.out.println("accepted new connection");
+       // object to read and write to the socket
+       BufferedReader in = new BufferedReader(new java.io.InputStreamReader(clientSocket.getInputStream())); 
+       PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+       String requestMessage, responseMessage;
+       // read the request message from the client
+        requestMessage = in.readLine();
+        System.out.println("requestMessage: " + requestMessage);
+        // create a response message
+        responseMessage = "HTTP/1.1 200 OK\r\n\r\n";
+        out.println(responseMessage);
+        System.out.println("responseMessage: " + responseMessage);
+        // close the connection
+
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
      }
