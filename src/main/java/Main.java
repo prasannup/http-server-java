@@ -28,10 +28,22 @@ public class Main {
         requestMessage = in.readLine();
         System.out.println("requestMessage: " + requestMessage);
         // create a response message
-        responseMessage = "HTTP/1.1 200 OK\r\n\r\n";
+
+        if(requestMessage !=null && requestMessage.split(" ")[0].equals("GET") && requestMessage.split(" ")[1].equals("/")) {
+          responseMessage = "HTTP/1.1 200 OK\r\n" ;
+                            
+        } else {
+          responseMessage = "HTTP/1.1 404 Not Found\r\n";
+        }
+
+        // send the response message to the client
         out.println(responseMessage);
         System.out.println("responseMessage: " + responseMessage);
-        // close the connection
+        in.close();
+        out.close();
+        clientSocket.close();
+        serverSocket.close();
+
 
      } catch (IOException e) {
        System.out.println("IOException: " + e.getMessage());
