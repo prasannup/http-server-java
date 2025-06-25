@@ -29,7 +29,7 @@ public class Main {
         System.out.println("requestMessage: " + requestMessage);
         // create a response message
 
-        if(requestMessage !=null && requestMessage.split(" ")[0].equals("GET") && requestMessage.split(" ")[1].equals("/")) {
+        if(requestMessage !=null &&  requestMessage.split(" ")[1].equals("/")) {
           responseMessage = "HTTP/1.1 200 OK\r\n" ;
                             
         } else {
