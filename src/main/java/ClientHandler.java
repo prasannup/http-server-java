@@ -3,17 +3,18 @@ import java.net.Socket;
 
 public class ClientHandler implements Runnable {
     private Socket clientSocket;
+    private final File baseDirectory;
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, File baseDirectory) {
         this.clientSocket = socket;
+        this.baseDirectory = baseDirectory;
     }
 
     @Override
     public void run() {
         try (
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)
-        ) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
             String requestMessage = in.readLine();
             System.out.println("requestMessage: " + requestMessage);
 
@@ -35,30 +36,53 @@ public class ClientHandler implements Runnable {
             } else if (path.startsWith("/echo/")) {
                 String echoMessage = path.substring(6);
                 responseMessage = "HTTP/1.1 200 OK\r\n" +
-                                  "Content-Type: text/plain\r\n" +
-                                  "Content-Length: " + echoMessage.length() + "\r\n" +
-                                  "\r\n" +
-                                  echoMessage;
+                        "Content-Type: text/plain\r\n" +
+                        "Content-Length: " + echoMessage.length() + "\r\n" +
+                        "\r\n" +
+                        echoMessage;
             } else if (path.equals("/user-agent")) {
                 if (userAgent != null) {
                     responseMessage = "HTTP/1.1 200 OK\r\n" +
-                                      "Content-Type: text/plain\r\n" +
-                                      "Content-Length: " + userAgent.length() + "\r\n" +
-                                      "\r\n" +
-                                      userAgent;
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: " + userAgent.length() + "\r\n" +
+                            "\r\n" +
+                            userAgent;
                 } else {
                     responseMessage = "HTTP/1.1 400 Bad Request\r\n" +
-                                      "Content-Type: text/plain\r\n" +
-                                      "Content-Length: 11\r\n" +
-                                      "\r\n" +
-                                      "Bad Request";
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: 11\r\n" +
+                            "\r\n" +
+                            "Bad Request";
+                }
+            } else if (path.startsWith("/files/")) {
+                String fileName = path.substring("/files/".length());
+                File file = new File(baseDirectory, fileName);
+
+                if (file.exists() && file.isFile()) {
+                    byte[] fileBytes = java.nio.file.Files.readAllBytes(file.toPath());
+
+                    String header = "HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: application/octet-stream\r\n" +
+                            "Content-Length: " + fileBytes.length + "\r\n" +
+                            "\r\n";
+
+                    clientSocket.getOutputStream().write(header.getBytes());
+                    clientSocket.getOutputStream().write(fileBytes);
+                    clientSocket.getOutputStream().flush();
+                    return;
+                } else {
+                    responseMessage = "HTTP/1.1 404 Not Found\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: 9\r\n" +
+                            "\r\n" +
+                            "Not Found";
                 }
             } else {
                 responseMessage = "HTTP/1.1 404 Not Found\r\n" +
-                                  "Content-Type: text/plain\r\n" +
-                                  "Content-Length: 9\r\n" +
-                                  "\r\n" +
-                                  "Not Found";
+                        "Content-Type: text/plain\r\n" +
+                        "Content-Length: 9\r\n" +
+                        "\r\n" +
+                        "Not Found";
             }
 
             out.print(responseMessage); // use print() to avoid extra \n
