@@ -48,8 +48,9 @@ public class ClientHandler implements Runnable {
                 File file = new File(baseDirectory, filename);
                 System.out.println("Preparing to write to file: " + file.getAbsolutePath());
 
-                char[] bodyBuffer = new char[contentLength];
-                int read = in.read(bodyBuffer, 0, contentLength);
+                byte[] buffer = new byte[contentLength];
+                int read = is.read(buffer, 0, contentLength);
+
                 System.out.println("Expected to read: " + contentLength + ", Actually read: " + read);
 
                 if (read != contentLength) {
@@ -58,13 +59,45 @@ public class ClientHandler implements Runnable {
                             "Content-Length: 11\r\n\r\n" +
                             "Bad Request";
                 } else {
-                    try (FileWriter fw = new FileWriter(file)) {
-                        fw.write(bodyBuffer, 0, read);
+                    try (FileOutputStream fw = new FileOutputStream(file)) {
+                        fw.write(buffer, 0, read);
                     }
                     responseMessage = "HTTP/1.1 201 Created\r\n\r\n";
                 }
 
                 out.print(responseMessage);
+                out.flush();
+                return;
+            }
+
+            if (method.equals("PUT") && path.startsWith("/files/") && baseDirectory != null) {
+                String filename = path.substring("/files/".length());
+                File file = new File(baseDirectory, filename);
+
+                System.out.println("PUT request: Writing to file " + file.getAbsolutePath());
+
+                byte[] buffer = new byte[contentLength];
+                int read = is.read(buffer, 0, contentLength);
+
+                if (read != contentLength) {
+                    responseMessage = "HTTP/1.1 400 Bad Request\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: 11\r\n\r\nBad Request";
+                } else {
+                    boolean existed = file.exists();
+
+                    try (FileOutputStream fos = new FileOutputStream(file)) {
+                        fos.write(buffer, 0, read);
+                    }
+
+                    responseMessage = existed
+                            ? "HTTP/1.1 200 OK\r\n\r\n"
+                            : "HTTP/1.1 201 Created\r\n\r\n";
+                }
+
+                out.print(responseMessage);
+                System.out.println("PUT response: " + responseMessage);
+
                 out.flush();
                 return;
             }
