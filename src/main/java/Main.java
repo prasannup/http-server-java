@@ -13,15 +13,19 @@ public class Main {
         directory = args[i + 1];
       }
     }
+
     if (directory == null) {
-      System.out.println("Directory not specified!");
+      System.out.println("No directory provided. Exiting.");
       return;
     }
 
     File baseDir = new File(directory);
+    System.out.println("Directory set to: " + baseDir.getAbsolutePath());
+
     try {
       ServerSocket serverSocket = new ServerSocket(4221);
       serverSocket.setReuseAddress(true);
+      System.out.println("Server is listening on port 4221...");
 
       while (true) {
         Socket clientSocket = serverSocket.accept();
