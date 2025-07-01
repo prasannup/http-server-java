@@ -12,6 +12,25 @@ It supports basic **CRUD operations** via HTTP methods: `GET`, `POST`, `PUT`, an
 - Echo endpoint and User-Agent detection
 - Multi-threaded handling of concurrent clients
 
+  ✅ GET /
+
+curl -i http://localhost:4221/
+
+
+✅ GET /echo/{message}
+curl -i http://localhost:4221/echo/hello
+
+
+✅ GET /user-agent
+curl -i http://localhost:4221/user-agent
+
+
+✅ GET /files/{filename}
+Fetches the content of a file in the --directory folder.
+curl -i http://localhost:4221/files/hello.txt
+
+
+
 📝 File CRUD via HTTP
 📤 POST /files/{filename}
 curl -i -X POST http://localhost:4221/files/newfile.txt \
