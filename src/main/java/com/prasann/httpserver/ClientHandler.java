@@ -1,3 +1,5 @@
+package com.prasann.httpserver;
+
 import java.io.*;
 import java.net.Socket;
 
@@ -16,6 +18,7 @@ public class ClientHandler implements Runnable {
                 InputStream is = clientSocket.getInputStream();
                 BufferedReader in = new BufferedReader(new InputStreamReader(is));
                 PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+
             String requestMessage = in.readLine();
             System.out.println("requestMessage: " + requestMessage);
 
@@ -31,6 +34,7 @@ public class ClientHandler implements Runnable {
             int contentLength = 0;
             String userAgent = null;
             String line;
+
             while ((line = in.readLine()) != null && !line.isEmpty()) {
                 System.out.println("Header: " + line);
                 if (line.startsWith("User-Agent: ")) {
@@ -49,18 +53,25 @@ public class ClientHandler implements Runnable {
                 System.out.println("Preparing to write to file: " + file.getAbsolutePath());
 
                 byte[] buffer = new byte[contentLength];
-                int read = is.read(buffer, 0, contentLength);
+                int totalRead = 0;
+                while (totalRead < contentLength) {
+                    int bytesRead = is.read(buffer, totalRead, contentLength - totalRead);
+                    if (bytesRead == -1) {
+                        break; // End of stream
+                    }
+                    totalRead += bytesRead;
+                }
 
-                System.out.println("Expected to read: " + contentLength + ", Actually read: " + read);
+                System.out.println("Expected to read: " + contentLength + ", Actually read: " + totalRead);
 
-                if (read != contentLength) {
+                if (totalRead != contentLength) {
                     responseMessage = "HTTP/1.1 400 Bad Request\r\n" +
                             "Content-Type: text/plain\r\n" +
                             "Content-Length: 11\r\n\r\n" +
                             "Bad Request";
                 } else {
                     try (FileOutputStream fw = new FileOutputStream(file)) {
-                        fw.write(buffer, 0, read);
+                        fw.write(buffer, 0, totalRead);
                     }
                     responseMessage = "HTTP/1.1 201 Created\r\n\r\n";
                 }
@@ -70,6 +81,7 @@ public class ClientHandler implements Runnable {
                 return;
             }
 
+            // Handle PUT /files/{filename}
             if (method.equals("PUT") && path.startsWith("/files/") && baseDirectory != null) {
                 String filename = path.substring("/files/".length());
                 File file = new File(baseDirectory, filename);
@@ -77,9 +89,15 @@ public class ClientHandler implements Runnable {
                 System.out.println("PUT request: Writing to file " + file.getAbsolutePath());
 
                 byte[] buffer = new byte[contentLength];
-                int read = is.read(buffer, 0, contentLength);
+                int totalRead = 0;
+                while (totalRead < contentLength) {
+                    int bytesRead = is.read(buffer, totalRead, contentLength - totalRead);
+                    if (bytesRead == -1)
+                        break;
+                    totalRead += bytesRead;
+                }
 
-                if (read != contentLength) {
+                if (totalRead != contentLength) {
                     responseMessage = "HTTP/1.1 400 Bad Request\r\n" +
                             "Content-Type: text/plain\r\n" +
                             "Content-Length: 11\r\n\r\nBad Request";
@@ -87,7 +105,7 @@ public class ClientHandler implements Runnable {
                     boolean existed = file.exists();
 
                     try (FileOutputStream fos = new FileOutputStream(file)) {
-                        fos.write(buffer, 0, read);
+                        fos.write(buffer, 0, totalRead);
                     }
 
                     responseMessage = existed
@@ -97,7 +115,34 @@ public class ClientHandler implements Runnable {
 
                 out.print(responseMessage);
                 System.out.println("PUT response: " + responseMessage);
+                out.flush();
+                return;
+            }
+            // Handle DELETE /files/{filename}
+            if (method.equals("DELETE") && path.startsWith("/files/") && baseDirectory != null) {
+                String filename = path.substring("/files/".length());
+                File file = new File(baseDirectory, filename);
 
+                System.out.println("DELETE request: Attempting to delete " + file.getAbsolutePath());
+
+                if (file.exists() && file.isFile()) {
+                    boolean deleted = file.delete();
+                    if (deleted) {
+                        responseMessage = "HTTP/1.1 200 OK\r\n\r\n";
+                    } else {
+                        responseMessage = "HTTP/1.1 500 Internal Server Error\r\n" +
+                                "Content-Type: text/plain\r\n" +
+                                "Content-Length: 21\r\n\r\n" +
+                                "Internal Server Error";
+                    }
+                } else {
+                    responseMessage = "HTTP/1.1 404 Not Found\r\n" +
+                            "Content-Type: text/plain\r\n" +
+                            "Content-Length: 9\r\n\r\n" +
+                            "Not Found";
+                }
+
+                out.print(responseMessage);
                 out.flush();
                 return;
             }
